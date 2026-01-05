@@ -360,16 +360,16 @@ Apos implementar as correcoes, validar:
 
 ## 6. RESUMO DAS ALTERACOES NECESSARIAS
 
-| Arquivo | Linha | Alteracao |
-|---------|-------|-----------|
-| LUCIANO (1).py | 335 | Adicionar WHERE flag_atualmente_cancelada = 0 |
-| LUCIANO (1).py | 366 | Adicionar WHERE flag_atualmente_cancelada = 0 |
-| LUCIANO (1).py | 417 | Criar funcao separada para scores de ativas |
-| LUCIANO (1).py | 462-481 | Reescrever query com LEFT JOIN e validacao |
-| LUCIANO (1).py | 2614 | Adicionar filtro apos carregar dados |
-| LUCIANO (1).py | 3266 | Adicionar filtro apos carregar dados |
-| Impala | - | Criar views separadas para ativas/canceladas |
-| Impala | - | Garantir que flag esta atualizada em todas tabelas |
+| Arquivo | Linha | Alteracao | Status |
+|---------|-------|-----------|--------|
+| LUCIANO (1).py | 335 | Adicionar WHERE flag_atualmente_cancelada = 0 | ✅ IMPLEMENTADO |
+| LUCIANO (1).py | 366 | Adicionar WHERE flag_atualmente_cancelada = 0 | ✅ IMPLEMENTADO |
+| LUCIANO (1).py | 417 | Criar funcao separada para scores de ativas | ✅ IMPLEMENTADO |
+| LUCIANO (1).py | 462-481 | Reescrever query com LEFT JOIN e validacao | ✅ IMPLEMENTADO |
+| LUCIANO (1).py | 2614 | Adicionar filtro apos carregar dados | ✅ IMPLEMENTADO |
+| LUCIANO (1).py | 3266 | Adicionar filtro apos carregar dados | ✅ IMPLEMENTADO |
+| Impala | - | Criar views separadas para ativas/canceladas | OPCIONAL |
+| Impala | - | Garantir que flag esta atualizada em todas tabelas | JA OK (SQLs corretos) |
 
 ---
 
