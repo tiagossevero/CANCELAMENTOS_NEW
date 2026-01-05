@@ -2,11 +2,17 @@
 ================================================================================
 PROJETO LUCIANO - Dashboard de Machine Learning para Cancelamento de IE
 ================================================================================
-Sistema de identificação de empresas ativas com perfil similar às canceladas
+Sistema de identificação de empresas ATIVAS com perfil similar às canceladas
 Desenvolvido para a Receita Estadual de Santa Catarina
 
-Versão: 1.0
-Data: Dezembro 2025
+Versão: 1.1
+Data: Janeiro 2026
+
+CORREÇÕES v1.1:
+- Filtro de empresas ATIVAS em todas as queries e páginas
+- Rankings e alertas agora mostram APENAS empresas ativas (flag_atualmente_cancelada = 0)
+- Função carregar_empresas_ativas() corrigida com LEFT JOIN
+- Empresas já canceladas são excluídas das análises de risco
 ================================================================================
 """
 
@@ -330,9 +336,14 @@ def carregar_resumo_executivo(_engine):
         st.sidebar.warning(f"⚠️ luciano_resumo: {str(e)[:50]}")
         dados['resumo'] = pd.DataFrame()
     
-    # 2. Top 100 empresas
+    # 2. Top 100 empresas - APENAS ATIVAS (flag_atualmente_cancelada = 0)
     try:
-        query_top100 = f"SELECT * FROM {DATABASE}.luciano_top100 ORDER BY ranking_fiscalizacao LIMIT 100"
+        query_top100 = f"""
+            SELECT * FROM {DATABASE}.luciano_top100
+            WHERE flag_atualmente_cancelada = 0
+            ORDER BY ranking_fiscalizacao
+            LIMIT 100
+        """
         dados['top100'] = pd.read_sql(query_top100, _engine)
     except Exception as e:
         st.sidebar.warning(f"⚠️ luciano_top100: {str(e)[:50]}")
@@ -354,16 +365,17 @@ def carregar_resumo_executivo(_engine):
         st.sidebar.warning(f"⚠️ luciano_fiscal: {str(e)[:50]}")
         dados['fiscal'] = pd.DataFrame()
     
-    # 5. Scores (apenas agregações)
+    # 5. Scores (apenas agregações) - APENAS EMPRESAS ATIVAS
     try:
         query_scores_agg = f"""
-            SELECT 
+            SELECT
                 classificacao_risco_final,
                 COUNT(*) as qtde,
                 SUM(saldo_credor_atual) as saldo_total,
                 AVG(score_total) as score_medio,
                 AVG(qtde_indicios) as indicios_medio
             FROM {DATABASE}.luciano_scores
+            WHERE flag_atualmente_cancelada = 0
             GROUP BY classificacao_risco_final
         """
         dados['scores_agg'] = pd.read_sql(query_scores_agg, _engine)
@@ -454,13 +466,17 @@ def carregar_creditos(_engine):
 @st.cache_data(ttl=3600)
 def carregar_empresas_ativas(_engine):
     """
-    Carrega empresas ATIVAS (não canceladas) para aplicar o modelo.
-    Esta é a consulta principal para identificar novas candidatas.
+    Carrega empresas ATIVAS para aplicar o modelo de ML.
+
+    CORREÇÃO: Usa LEFT JOIN para incluir:
+    1. Empresas que NUNCA foram analisadas (não estão em luciano_scores)
+    2. Empresas que JÁ FORAM analisadas mas estão ATIVAS (flag_atualmente_cancelada = 0)
+
+    Isso corrige o problema de excluir empresas reativadas da análise.
     """
     try:
-        # Empresas ativas da base ODS que NÃO estão na base de cancelados
         query = f"""
-            SELECT 
+            SELECT
                 ods.nu_cnpj as cnpj,
                 ods.nu_ie as ie,
                 ods.nm_razao_social as razao_social,
@@ -473,19 +489,24 @@ def carregar_empresas_ativas(_engine):
                 ods.nm_gerfe as gerencia_regional,
                 ods.nm_tipo_contribuinte as tipo_contribuinte,
                 ods.nm_reg_apuracao as regime_apuracao,
-                ods.nu_cnpj_grupo as grupo_economico
+                ods.nu_cnpj_grupo as grupo_economico,
+                CASE WHEN sc.cnpj IS NULL THEN 0 ELSE 1 END as ja_analisada,
+                sc.score_total as score_existente
             FROM usr_sat_ods.vw_ods_contrib ods
+            LEFT JOIN {DATABASE}.luciano_scores sc
+                ON ods.nu_cnpj = sc.cnpj
             WHERE ods.cd_sit_cadastral = 1
-            AND ods.nu_cnpj NOT IN (
-                SELECT DISTINCT cnpj FROM {DATABASE}.luciano_metricas WHERE cnpj IS NOT NULL
+            AND (
+                sc.cnpj IS NULL
+                OR sc.flag_atualmente_cancelada = 0
             )
             LIMIT 100000
         """
         df = pd.read_sql(query, _engine)
-        
+
         if 'cnpj' in df.columns:
             df['cnpj'] = df['cnpj'].apply(limpar_cnpj)
-        
+
         return df
     except Exception as e:
         st.error(f"Erro ao carregar empresas ativas: {str(e)[:100]}")
@@ -2608,18 +2629,30 @@ def exibir_drill_down_contador(detalhes, df_contab_geral, filtros):
         st.info("Nenhuma empresa encontrada para este contador.")
         
 def pagina_ranking_empresas(dados, filtros):
-    """Ranking de empresas prioritárias."""
+    """Ranking de empresas prioritárias - APENAS EMPRESAS ATIVAS."""
     st.markdown("<h1 class='main-header'>🏆 Ranking de Empresas Prioritárias</h1>", unsafe_allow_html=True)
-    
+
     df_top100 = dados.get('top100', pd.DataFrame())
-    
+
     if df_top100.empty:
         st.warning("⚠️ Dados de ranking não disponíveis.")
         return
-    
+
+    # CORREÇÃO: Filtrar apenas empresas ATIVAS (não canceladas atualmente)
+    if 'flag_atualmente_cancelada' in df_top100.columns:
+        total_antes = len(df_top100)
+        df_top100 = df_top100[df_top100['flag_atualmente_cancelada'] == 0].copy()
+        total_depois = len(df_top100)
+        if total_antes != total_depois:
+            st.info(f"📊 Exibindo {total_depois} empresas ATIVAS (excluídas {total_antes - total_depois} já canceladas)")
+
+    if df_top100.empty:
+        st.warning("⚠️ Nenhuma empresa ATIVA encontrada no ranking.")
+        return
+
     st.markdown("""
     <div class='info-box'>
-    <b>Objetivo:</b> Ranking das empresas com maior risco baseado em scores compostos
+    <b>Objetivo:</b> Ranking das empresas <b>ATIVAS</b> com maior risco baseado em scores compostos
     de comportamento, créditos e indícios NEAF.
     </div>
     """, unsafe_allow_html=True)
@@ -3260,22 +3293,34 @@ def pagina_machine_learning(dados, filtros, engine):
 
 
 def pagina_alertas_acoes(dados, filtros):
-    """Sistema de alertas e ações prioritárias - USA DADOS DO BANCO."""
+    """Sistema de alertas e ações prioritárias - APENAS EMPRESAS ATIVAS."""
     st.markdown("<h1 class='main-header'>🚨 Alertas e Ações Prioritárias</h1>", unsafe_allow_html=True)
-    
+
     df_top100 = dados.get('top100', pd.DataFrame())
-    
+
     if df_top100.empty:
         st.warning("⚠️ Dados não disponíveis.")
         return
-    
+
+    # CORREÇÃO: Filtrar apenas empresas ATIVAS (não canceladas atualmente)
+    if 'flag_atualmente_cancelada' in df_top100.columns:
+        total_antes = len(df_top100)
+        df_top100 = df_top100[df_top100['flag_atualmente_cancelada'] == 0].copy()
+        total_depois = len(df_top100)
+        if total_antes != total_depois:
+            st.info(f"📊 Exibindo alertas de {total_depois} empresas ATIVAS (excluídas {total_antes - total_depois} já canceladas)")
+
+    if df_top100.empty:
+        st.warning("⚠️ Nenhuma empresa ATIVA encontrada para alertas.")
+        return
+
     st.markdown("""
     <div class='info-box'>
-    <b>Objetivo:</b> Alertas priorizados calculados automaticamente pelo sistema,
+    <b>Objetivo:</b> Alertas priorizados para empresas <b>ATIVAS</b>, calculados automaticamente
     baseados em percentis de score, indícios graves e saldos credores.
     </div>
     """, unsafe_allow_html=True)
-    
+
     # Verificar se coluna nivel_alerta existe
     if 'nivel_alerta' not in df_top100.columns:
         st.error("Coluna 'nivel_alerta' não encontrada. Execute o SQL atualizado.")
