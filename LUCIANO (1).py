@@ -993,13 +993,44 @@ def aplicar_filtros(df, filtros):
 def pagina_dashboard_executivo(dados, filtros):
     """Dashboard executivo principal."""
     st.markdown("<h1 class='main-header'>🎯 PROJETO LUCIANO - Dashboard Executivo</h1>", unsafe_allow_html=True)
-    
+
     st.markdown("""
     <div class='info-box'>
-    <b>Objetivo:</b> Sistema de Machine Learning para identificar empresas ativas com perfil 
+    <b>Objetivo:</b> Sistema de Machine Learning para identificar empresas ativas com perfil
     similar às que tiveram IE cancelada, priorizando ações de fiscalização proativa.
     </div>
     """, unsafe_allow_html=True)
+
+    # Seção de ajuda expandível para entendimento dos indicadores
+    with st.expander("❓ Guia Rápido - Como interpretar os indicadores", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+            **📊 Classificação de Risco:**
+            - 🔴 **CRÍTICO** (Score ≥ 70): Fiscalização imediata
+            - 🟠 **ALTO** (Score 50-69): Monitorar de perto
+            - 🟡 **MÉDIO** (Score 30-49): Acompanhamento regular
+            - 🟢 **BAIXO** (Score < 30): Monitoramento básico
+
+            **🎯 Composição do Score Total:**
+            - **25%** Comportamento (protocolos, reincidência)
+            - **35%** Crédito (saldos, valores suspeitos)
+            - **40%** Indícios NEAF (irregularidades)
+            """)
+
+        with col2:
+            st.markdown("""
+            **🚨 Níveis de Alerta:**
+            - 🔴 **AÇÃO IMEDIATA**: Percentil 95+ com indícios graves
+            - 🟠 **MUITO URGENTE**: Percentil 90-95
+            - 🟡 **URGENTE**: Percentil 75-90
+            - ⚪ **PRIORIDADE ALTA**: Percentil 50-75
+            - 🟢 **MONITORAR**: Abaixo do percentil 50
+
+            **💡 Dica:** Passe o mouse sobre qualquer indicador
+            para ver uma explicação detalhada.
+            """)
     
     # Dados do resumo
     df_resumo = dados.get('resumo', pd.DataFrame())
@@ -1017,23 +1048,28 @@ def pagina_dashboard_executivo(dados, filtros):
     
     with col1:
         total = resumo.get('total_empresas', 0)
-        st.metric("Empresas Analisadas", f"{int(total):,}")
-    
+        st.metric("Empresas Analisadas", f"{int(total):,}",
+                  help="Total de empresas que já passaram por processo de cancelamento de IE e foram analisadas pelo modelo de ML.")
+
     with col2:
         protocolos = resumo.get('total_protocolos', 0)
-        st.metric("Total de Protocolos", f"{int(protocolos):,}")
-    
+        st.metric("Total de Protocolos", f"{int(protocolos):,}",
+                  help="Quantidade total de protocolos de cancelamento processados nos últimos 60 meses. Uma empresa pode ter múltiplos protocolos.")
+
     with col3:
         criticos = resumo.get('empresas_risco_critico', 0)
-        st.metric("🔴 Risco CRÍTICO", f"{int(criticos):,}")
-    
+        st.metric("🔴 Risco CRÍTICO", f"{int(criticos):,}",
+                  help="Empresas com score total ≥ 70. Apresentam alto risco de irregularidades e devem ser priorizadas para fiscalização imediata.")
+
     with col4:
         altos = resumo.get('empresas_risco_alto', 0)
-        st.metric("🟠 Risco ALTO", f"{int(altos):,}")
-    
+        st.metric("🟠 Risco ALTO", f"{int(altos):,}",
+                  help="Empresas com score total entre 50 e 69. Apresentam risco elevado e devem ser monitoradas com atenção.")
+
     with col5:
         score_medio = resumo.get('score_medio_total', 0)
-        st.metric("Score Médio", f"{float(score_medio):.1f}")
+        st.metric("Score Médio", f"{float(score_medio):.1f}",
+                  help="Média aritmética do score total de todas as empresas analisadas. Score varia de 0 a 100 (quanto maior, maior o risco).")
     
     st.divider()
     
@@ -1043,23 +1079,28 @@ def pagina_dashboard_executivo(dados, filtros):
     with col1:
         canceladas = resumo.get('empresas_ainda_canceladas', 0)
         perc_canc = resumo.get('perc_ainda_canceladas', 0)
-        st.metric("Ainda Canceladas", f"{int(canceladas):,}", delta=f"{float(perc_canc):.1f}%")
-    
+        st.metric("Ainda Canceladas", f"{int(canceladas):,}", delta=f"{float(perc_canc):.1f}%",
+                  help="Empresas que permanecem com IE cancelada atualmente. O delta mostra o percentual em relação ao total analisado.")
+
     with col2:
         reincidentes = resumo.get('empresas_reincidentes', 0)
-        st.metric("Reincidentes", f"{int(reincidentes):,}")
-    
+        st.metric("Reincidentes", f"{int(reincidentes):,}",
+                  help="Empresas que tiveram mais de um protocolo de cancelamento. Indica comportamento recorrente de irregularidades.")
+
     with col3:
         saldo_total = resumo.get('saldo_credor_total', 0)
-        st.metric("Saldo Credor Total", f"R$ {float(saldo_total)/1e6:.1f}M")
-    
+        st.metric("Saldo Credor Total", f"R$ {float(saldo_total)/1e6:.1f}M",
+                  help="Soma dos saldos credores de ICMS de todas as empresas analisadas. Valores em risco caso haja irregularidades.")
+
     with col4:
         com_indicios = resumo.get('empresas_com_indicios', 0)
-        st.metric("Com Indícios NEAF", f"{int(com_indicios):,}")
-    
+        st.metric("Com Indícios NEAF", f"{int(com_indicios):,}",
+                  help="Empresas que possuem pelo menos um indício registrado no NEAF (Núcleo de Estudos e Análise Fiscal).")
+
     with col5:
         indicios_graves = resumo.get('empresas_indicios_graves', 0)
-        st.metric("Indícios Graves", f"{int(indicios_graves):,}")
+        st.metric("Indícios Graves", f"{int(indicios_graves):,}",
+                  help="Empresas com indícios de alta gravidade no NEAF, como simulação de operações, passivo fictício ou fraude estruturada.")
     
     st.divider()
     
@@ -1074,32 +1115,39 @@ def pagina_dashboard_executivo(dados, filtros):
     
     with col1:
         acao_imediata = resumo.get('alertas_acao_imediata', 0)
-        st.metric("🔴 AÇÃO IMEDIATA", f"{int(acao_imediata):,}")
-    
+        st.metric("🔴 AÇÃO IMEDIATA", f"{int(acao_imediata):,}",
+                  help="Empresas no percentil 95+ de score com indícios graves. Requerem fiscalização prioritária e imediata.")
+
     with col2:
         muito_urgente = resumo.get('alertas_muito_urgente', 0)
-        st.metric("🟠 MUITO URGENTE", f"{int(muito_urgente):,}")
-    
+        st.metric("🟠 MUITO URGENTE", f"{int(muito_urgente):,}",
+                  help="Empresas no percentil 90-95 de score. Alto risco, devem ser tratadas em curto prazo.")
+
     with col3:
         urgente = resumo.get('alertas_urgente', 0)
-        st.metric("🟡 URGENTE", f"{int(urgente):,}")
-    
+        st.metric("🟡 URGENTE", f"{int(urgente):,}",
+                  help="Empresas no percentil 75-90 de score. Risco moderado-alto, devem entrar na fila de fiscalização.")
+
     with col4:
         prioridade_alta = resumo.get('alertas_prioridade_alta', 0)
-        st.metric("⚪ PRIORIDADE ALTA", f"{int(prioridade_alta):,}")
-    
+        st.metric("⚪ PRIORIDADE ALTA", f"{int(prioridade_alta):,}",
+                  help="Empresas no percentil 50-75 de score. Devem ser acompanhadas para evolução do risco.")
+
     with col5:
         monitorar = resumo.get('alertas_monitorar', 0)
-        st.metric("🟢 MONITORAR", f"{int(monitorar):,}")
-    
+        st.metric("🟢 MONITORAR", f"{int(monitorar):,}",
+                  help="Empresas abaixo do percentil 50. Risco baixo, mas devem permanecer em monitoramento contínuo.")
+
     # Saldos por alerta
     col1, col2 = st.columns(2)
     with col1:
         saldo_imediata = resumo.get('saldo_acao_imediata', 0)
-        st.metric("💰 Saldo Ação Imediata", f"R$ {float(saldo_imediata)/1e6:.2f}M")
+        st.metric("💰 Saldo Ação Imediata", f"R$ {float(saldo_imediata)/1e6:.2f}M",
+                  help="Soma dos saldos credores das empresas classificadas como AÇÃO IMEDIATA. Representa o valor financeiro em maior risco.")
     with col2:
         saldo_urgentes = resumo.get('saldo_alertas_urgentes', 0)
-        st.metric("💰 Saldo Alertas Urgentes", f"R$ {float(saldo_urgentes)/1e6:.2f}M")
+        st.metric("💰 Saldo Alertas Urgentes", f"R$ {float(saldo_urgentes)/1e6:.2f}M",
+                  help="Soma dos saldos credores de AÇÃO IMEDIATA + MUITO URGENTE + URGENTE. Valor total em risco que requer atenção.")
     
     # Distribuição por Risco
     df_scores_agg = dados.get('scores_agg', pd.DataFrame())
@@ -1191,22 +1239,26 @@ def pagina_analise_temporal(dados, filtros):
     
     # KPIs temporais
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         total_periodos = len(df_temporal)
-        st.metric("Períodos Analisados", f"{total_periodos}")
-    
+        st.metric("Períodos Analisados", f"{total_periodos}",
+                  help="Quantidade de meses/períodos distintos com dados de cancelamento no histórico de 60 meses.")
+
     with col2:
         media_protocolos = df_temporal['qtde_protocolos'].mean()
-        st.metric("Média Protocolos/Mês", f"{media_protocolos:.1f}")
-    
+        st.metric("Média Protocolos/Mês", f"{media_protocolos:.1f}",
+                  help="Média mensal de protocolos de cancelamento processados. Indica o volume médio de trabalho.")
+
     with col3:
         media_empresas = df_temporal['qtde_empresas_distintas'].mean()
-        st.metric("Média Empresas/Mês", f"{media_empresas:.1f}")
-    
+        st.metric("Média Empresas/Mês", f"{media_empresas:.1f}",
+                  help="Média mensal de empresas distintas afetadas por cancelamento. Uma empresa pode ter múltiplos protocolos no mesmo mês.")
+
     with col4:
         taxa_media = df_temporal['taxa_permanencia_perc'].mean()
-        st.metric("Taxa Permanência Média", f"{taxa_media:.1f}%")
+        st.metric("Taxa Permanência Média", f"{taxa_media:.1f}%",
+                  help="Percentual médio de empresas que permaneceram canceladas após o processo. Quanto maior, mais efetivo o cancelamento.")
     
     st.divider()
     
@@ -1327,22 +1379,26 @@ def pagina_analise_fiscal(dados, filtros, engine):
         
         # KPIs
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
             total_fiscais = len(df_fiscal)
-            st.metric("Total de Fiscais", f"{total_fiscais}")
-        
+            st.metric("Total de Fiscais", f"{total_fiscais}",
+                      help="Quantidade de fiscais distintos que realizaram cancelamentos manuais de IE no período analisado.")
+
         with col2:
             total_protocolos = df_fiscal['qtde_protocolos_fiscal'].sum()
-            st.metric("Total Protocolos", f"{int(total_protocolos):,}")
-        
+            st.metric("Total Protocolos", f"{int(total_protocolos):,}",
+                      help="Soma de todos os protocolos de cancelamento manual processados por todos os fiscais.")
+
         with col3:
             media_efetividade = df_fiscal['taxa_efetividade_perc'].mean()
-            st.metric("Efetividade Média", f"{media_efetividade:.1f}%")
-        
+            st.metric("Efetividade Média", f"{media_efetividade:.1f}%",
+                      help="Percentual médio de cancelamentos que permaneceram efetivos (não foram revertidos). Quanto maior, melhor a qualidade das ações.")
+
         with col4:
             media_dias = df_fiscal['media_dias_processamento'].mean()
-            st.metric("Tempo Médio (dias)", f"{media_dias:.1f}")
+            st.metric("Tempo Médio (dias)", f"{media_dias:.1f}",
+                      help="Tempo médio em dias desde a abertura até a conclusão do protocolo de cancelamento.")
         
         st.divider()
         
@@ -1482,23 +1538,31 @@ def exibir_drill_down_fiscal(detalhes, matricula_fiscal, df_fiscal, filtros):
     score_medio = df_base['score_total'].mean() if 'score_total' in df_base.columns else 0
     
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
-        st.metric("Total Protocolos", f"{total_protocolos:,}")
-        st.metric("Empresas Distintas", f"{total_empresas:,}")
-    
+        st.metric("Total Protocolos", f"{total_protocolos:,}",
+                  help="Quantidade de protocolos de cancelamento realizados por este fiscal.")
+        st.metric("Empresas Distintas", f"{total_empresas:,}",
+                  help="Número de empresas únicas afetadas pelos cancelamentos deste fiscal.")
+
     with col2:
-        st.metric("Ainda Canceladas", f"{int(ainda_canceladas):,}", 
-                  delta=f"{100*ainda_canceladas/total_protocolos:.1f}%" if total_protocolos > 0 else "0%")
-        st.metric("Reativadas", f"{int(reativadas):,}")
-    
+        st.metric("Ainda Canceladas", f"{int(ainda_canceladas):,}",
+                  delta=f"{100*ainda_canceladas/total_protocolos:.1f}%" if total_protocolos > 0 else "0%",
+                  help="Quantidade de empresas que permanecem canceladas. Delta indica taxa de efetividade.")
+        st.metric("Reativadas", f"{int(reativadas):,}",
+                  help="Empresas que foram reativadas após o cancelamento. Pode indicar reversão judicial ou administrativa.")
+
     with col3:
-        st.metric("Saldo Credor Total", f"R$ {saldo_total/1e6:.2f}M")
-        st.metric("Score Médio", f"{score_medio:.1f}")
-    
+        st.metric("Saldo Credor Total", f"R$ {saldo_total/1e6:.2f}M",
+                  help="Soma dos saldos credores de todas as empresas canceladas por este fiscal.")
+        st.metric("Score Médio", f"{score_medio:.1f}",
+                  help="Média do score de risco das empresas canceladas. Quanto maior, maior o risco médio das empresas tratadas.")
+
     with col4:
-        st.metric("Total Indícios", f"{int(total_indicios):,}")
-        st.metric("Indícios Graves", f"{int(indicios_graves):,}")
+        st.metric("Total Indícios", f"{int(total_indicios):,}",
+                  help="Soma de todos os indícios NEAF das empresas canceladas por este fiscal.")
+        st.metric("Indícios Graves", f"{int(indicios_graves):,}",
+                  help="Quantidade de indícios de alta gravidade (fraude, simulação, etc.) nas empresas deste fiscal.")
     
     st.divider()
     
@@ -1774,9 +1838,51 @@ def exibir_drill_down_fiscal(detalhes, matricula_fiscal, df_fiscal, filtros):
 
 def pagina_analise_contador(dados, filtros, engine):
     """Página de análise por contador/contabilista"""
-    
+
     st.title("📋 Análise por Contador/Contabilista")
-    
+
+    st.markdown("""
+    <div class='info-box'>
+    <b>Objetivo:</b> Analisar contadores com alta concentração de empresas canceladas,
+    identificando padrões que possam indicar envolvimento em irregularidades.
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Seção de ajuda para entendimento dos indicadores
+    with st.expander("❓ Guia - Indicadores de Risco por Contador", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+            **📊 Taxas Principais:**
+
+            **⚠️ Taxa de Cancelamento na Carteira:**
+            - Fórmula: (Empresas Canceladas ÷ Carteira Total) × 100
+            - Quanto MAIOR, mais problemático o contador
+            - **Alerta** > 20% | **Crítico** > 50%
+
+            **📈 Taxa de Efetividade:**
+            - Fórmula: (Ainda Canceladas ÷ Com Histórico) × 100
+            - Mede a permanência dos cancelamentos
+            - Valores altos indicam cancelamentos efetivos
+            """)
+
+        with col2:
+            st.markdown("""
+            **🎯 Score do Contador:**
+            Composição:
+            - **Volume** (30pts): Qtde de empresas canceladas
+            - **Concentração** (25pts): % da carteira cancelada
+            - **Risco Empresas** (25pts): Classificação das empresas
+            - **Financeiro** (20pts): Saldo credor total
+
+            **🚨 Níveis de Alerta:**
+            - **INVESTIGAR**: Score crítico + padrão suspeito
+            - **ATENÇÃO ESPECIAL**: Score alto
+            - **MONITORAR**: Score médio
+            - **NORMAL**: Sem alertas
+            """)
+
     # Carregar dados
     df_contab = carregar_contadores_completo(engine)
     
@@ -1820,69 +1926,75 @@ def pagina_analise_contador(dados, filtros, engine):
         
         # KPIs - Linha 1: Volume
         col1, col2, col3, col4, col5, col6 = st.columns(6)
-        
+
         with col1:
             total_contab = len(df_contab)
-            st.metric("Total Contadores", f"{total_contab:,}")
-        
+            st.metric("Total Contadores", f"{total_contab:,}",
+                      help="Quantidade de contadores/contabilistas que possuem empresas com histórico de cancelamento de IE.")
+
         with col2:
             total_carteira = df_contab['total_empresas_carteira'].sum()
-            st.metric("📁 Empresas na Carteira", f"{int(total_carteira):,}")
-        
+            st.metric("📁 Empresas na Carteira", f"{int(total_carteira):,}",
+                      help="Soma de todas as empresas nas carteiras de todos os contadores analisados.")
+
         with col3:
             total_canceladas = df_contab['qtde_empresas_ainda_canceladas'].sum()
-            st.metric("🔴 Ainda Canceladas", f"{int(total_canceladas):,}")
-        
+            st.metric("🔴 Ainda Canceladas", f"{int(total_canceladas):,}",
+                      help="Total de empresas que permanecem canceladas em todas as carteiras de contadores.")
+
         with col4:
             criticos = len(df_contab[df_contab['classificacao_risco_contador'] == 'CRÍTICO'])
-            st.metric("🔴 Contadores Críticos", f"{criticos:,}")
-        
+            st.metric("🔴 Contadores Críticos", f"{criticos:,}",
+                      help="Contadores com score de risco ≥ 70. Apresentam concentração elevada de empresas problemáticas.")
+
         with col5:
             investigar = len(df_contab[df_contab['nivel_alerta_contador'] == 'INVESTIGAR'])
-            st.metric("🚨 A Investigar", f"{investigar:,}")
-        
+            st.metric("🚨 A Investigar", f"{investigar:,}",
+                      help="Contadores sinalizados para investigação prioritária devido a padrões suspeitos em sua carteira.")
+
         with col6:
             saldo_total = df_contab['saldo_credor_total'].sum()
-            st.metric("💰 Saldo Total", f"R$ {saldo_total/1e9:.2f}B")
+            st.metric("💰 Saldo Total", f"R$ {saldo_total/1e9:.2f}B",
+                      help="Soma dos saldos credores de todas as empresas vinculadas aos contadores analisados.")
         
         # KPIs - Linha 2: Taxas
         st.divider()
         st.subheader("📊 Taxas Médias")
         
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
             media_taxa_carteira = df_contab['taxa_cancelamento_carteira_perc'].mean()
             st.metric(
-                "⚠️ Taxa Média Cancel. Carteira", 
+                "⚠️ Taxa Média Cancel. Carteira",
                 f"{media_taxa_carteira:.2f}%",
-                help="Média do % da carteira que está cancelada. Quanto MAIOR, PIOR."
+                help="Média do percentual da carteira de cada contador que está com IE cancelada. Fórmula: (Empresas Canceladas ÷ Total Carteira) × 100. Quanto MAIOR, mais problemático o contador."
             )
-        
+
         with col2:
             media_taxa_efet = df_contab['taxa_efetividade_perc'].mean()
             st.metric(
-                "📈 Taxa Média Efetividade", 
+                "📈 Taxa Média Efetividade",
                 f"{media_taxa_efet:.2f}%",
-                help="Média do % de cancelamentos que permaneceram. Mede eficácia."
+                help="Percentual médio de cancelamentos que permaneceram efetivos. Fórmula: (Ainda Canceladas ÷ Total com Histórico) × 100. Mede a qualidade/permanência dos cancelamentos."
             )
-        
+
         with col3:
             # Contadores com taxa de cancelamento carteira > 20%
             contadores_alto_risco = len(df_contab[df_contab['taxa_cancelamento_carteira_perc'] > 20])
             st.metric(
-                "🔴 Contadores >20% Carteira Cancel.", 
+                "🔴 Contadores >20% Carteira Cancel.",
                 f"{contadores_alto_risco:,}",
-                help="Contadores com mais de 20% da carteira cancelada"
+                help="Quantidade de contadores que possuem mais de 20% de sua carteira cancelada. Limite que sinaliza risco elevado."
             )
-        
+
         with col4:
             # Contadores com taxa de cancelamento carteira > 50%
             contadores_critico = len(df_contab[df_contab['taxa_cancelamento_carteira_perc'] > 50])
             st.metric(
-                "🚨 Contadores >50% Carteira Cancel.", 
+                "🚨 Contadores >50% Carteira Cancel.",
                 f"{contadores_critico:,}",
-                help="Contadores com mais de 50% da carteira cancelada - CRÍTICO"
+                help="Contadores com mais da metade da carteira cancelada. Situação crítica que exige investigação imediata."
             )
         
         st.divider()
@@ -2154,21 +2266,25 @@ def pagina_analise_contador(dados, filtros, engine):
         
         # KPIs do filtro
         col1, col2, col3, col4 = st.columns(4)
-        
+
         with col1:
-            st.metric("Contadores Filtrados", f"{len(df_filtrado):,}")
-        
+            st.metric("Contadores Filtrados", f"{len(df_filtrado):,}",
+                      help="Quantidade de contadores que atendem aos critérios de filtro selecionados acima.")
+
         with col2:
             total_carteira_filt = df_filtrado['total_empresas_carteira'].sum()
-            st.metric("Total Carteira", f"{int(total_carteira_filt):,}")
-        
+            st.metric("Total Carteira", f"{int(total_carteira_filt):,}",
+                      help="Soma das empresas nas carteiras dos contadores filtrados.")
+
         with col3:
             total_cancel_filt = df_filtrado['qtde_empresas_ainda_canceladas'].sum()
-            st.metric("Total Canceladas", f"{int(total_cancel_filt):,}")
-        
+            st.metric("Total Canceladas", f"{int(total_cancel_filt):,}",
+                      help="Total de empresas ainda canceladas nos contadores filtrados.")
+
         with col4:
             media_taxa = df_filtrado['taxa_cancelamento_carteira_perc'].mean()
-            st.metric("Média Taxa Carteira", f"{media_taxa:.1f}%")
+            st.metric("Média Taxa Carteira", f"{media_taxa:.1f}%",
+                      help="Média da taxa de cancelamento na carteira dos contadores filtrados.")
         
         st.divider()
         
@@ -2462,43 +2578,53 @@ def exibir_drill_down_contador(detalhes, df_contab_geral, filtros):
     st.subheader("📊 Indicadores do Contador")
     
     col1, col2, col3, col4, col5, col6 = st.columns(6)
-    
+
     with col1:
-        st.metric("📁 Carteira Total", f"{int(info.get('total_empresas_carteira', 0)):,}")
-        st.metric("✅ Ativas", f"{int(info.get('empresas_ativas_carteira', 0)):,}")
-    
+        st.metric("📁 Carteira Total", f"{int(info.get('total_empresas_carteira', 0)):,}",
+                  help="Total de empresas sob responsabilidade deste contador no cadastro estadual.")
+        st.metric("✅ Ativas", f"{int(info.get('empresas_ativas_carteira', 0)):,}",
+                  help="Empresas com IE ativa na carteira do contador.")
+
     with col2:
-        st.metric("📋 Com Cancelamento", f"{int(info.get('qtde_empresas_com_cancelamento', 0)):,}")
-        st.metric("🔴 Ainda Canceladas", f"{int(info.get('qtde_empresas_ainda_canceladas', 0)):,}")
-    
+        st.metric("📋 Com Cancelamento", f"{int(info.get('qtde_empresas_com_cancelamento', 0)):,}",
+                  help="Empresas que já tiveram algum protocolo de cancelamento no histórico.")
+        st.metric("🔴 Ainda Canceladas", f"{int(info.get('qtde_empresas_ainda_canceladas', 0)):,}",
+                  help="Empresas que permanecem com IE cancelada atualmente.")
+
     with col3:
         # Taxa de Cancelamento na Carteira (quanto maior, PIOR)
         taxa_carteira = info.get('taxa_cancelamento_carteira_perc', 0)
         delta_color = "inverse"  # vermelho se aumentar
         st.metric(
-            "⚠️ Taxa Cancel. Carteira", 
+            "⚠️ Taxa Cancel. Carteira",
             f"{taxa_carteira:.1f}%",
-            help="% da carteira total que está cancelada. Quanto MAIOR, PIOR."
+            help="Percentual da carteira com IE cancelada. Fórmula: (Canceladas ÷ Carteira Total) × 100. Quanto MAIOR, mais problemático."
         )
-        st.metric("🔄 Reativadas", f"{int(info.get('qtde_empresas_reativadas', 0)):,}")
-    
+        st.metric("🔄 Reativadas", f"{int(info.get('qtde_empresas_reativadas', 0)):,}",
+                  help="Empresas que foram reativadas após cancelamento.")
+
     with col4:
         # Taxa de Efetividade (Performance dos cancelamentos)
         taxa_efet = info.get('taxa_efetividade_perc', 0)
         st.metric(
-            "📈 Taxa Efetividade", 
+            "📈 Taxa Efetividade",
             f"{taxa_efet:.1f}%",
-            help="% das empresas canceladas que CONTINUAM canceladas. Mede eficácia."
+            help="Percentual dos cancelamentos que permaneceram. Fórmula: (Ainda Canceladas ÷ Com Histórico) × 100."
         )
-        st.metric("🟠 Risco Alto", f"{int(info.get('qtde_empresas_risco_alto', 0)):,}")
-    
+        st.metric("🟠 Risco Alto", f"{int(info.get('qtde_empresas_risco_alto', 0)):,}",
+                  help="Empresas com score de risco entre 50 e 69 na carteira do contador.")
+
     with col5:
-        st.metric("🔴 Risco Crítico", f"{int(info.get('qtde_empresas_risco_critico', 0)):,}")
-        st.metric("Saldo Credor", f"R$ {info.get('saldo_credor_total', 0)/1e6:.2f}M")
-    
+        st.metric("🔴 Risco Crítico", f"{int(info.get('qtde_empresas_risco_critico', 0)):,}",
+                  help="Empresas com score de risco ≥ 70 na carteira do contador.")
+        st.metric("Saldo Credor", f"R$ {info.get('saldo_credor_total', 0)/1e6:.2f}M",
+                  help="Soma dos saldos credores de todas as empresas da carteira deste contador.")
+
     with col6:
-        st.metric("Total Indícios", f"{int(info.get('total_indicios', 0)):,}")
-        st.metric("Indícios Graves", f"{int(info.get('total_indicios_graves', 0)):,}")
+        st.metric("Total Indícios", f"{int(info.get('total_indicios', 0)):,}",
+                  help="Soma de todos os indícios NEAF das empresas vinculadas a este contador.")
+        st.metric("Indícios Graves", f"{int(info.get('total_indicios_graves', 0)):,}",
+                  help="Quantidade de indícios de alta gravidade (fraude, simulação, etc.) nas empresas do contador.")
     
     st.divider()
     
@@ -2656,27 +2782,51 @@ def pagina_ranking_empresas(dados, filtros):
     de comportamento, créditos e indícios NEAF.
     </div>
     """, unsafe_allow_html=True)
-    
+
+    # Seção de ajuda para entendimento do ranking
+    with st.expander("❓ Guia - Entendendo o Ranking de Empresas", expanded=False):
+        st.markdown("""
+        **📋 Sobre este Ranking:**
+        Este ranking lista apenas empresas **ATIVAS** (não canceladas) ordenadas por score de risco.
+        São empresas que apresentam comportamento similar às que já foram canceladas.
+
+        **🔢 Colunas Principais:**
+        - **Ranking**: Posição no ranking de prioridade de fiscalização
+        - **Score Total**: Pontuação de risco (0-100), composição de comportamento + crédito + indícios
+        - **Score Comportamento**: Baseado em histórico de protocolos e reincidência
+        - **Score Crédito**: Baseado em saldos credores e padrões suspeitos
+        - **Score Indícios**: Baseado em irregularidades detectadas no NEAF
+
+        **💡 Como usar:**
+        1. Use os filtros na barra lateral para refinar os resultados
+        2. Ordene por diferentes critérios usando o seletor acima
+        3. Clique em "Exportar Ranking" para obter os dados em CSV
+        """)
+
     # Aplicar filtros
     df_filtrado = aplicar_filtros(df_top100, filtros)
     
     # KPIs do ranking
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
-        st.metric("Empresas no Ranking", f"{len(df_filtrado)}")
-    
+        st.metric("Empresas no Ranking", f"{len(df_filtrado)}",
+                  help="Quantidade de empresas ATIVAS que atendem aos critérios de filtro. Exclui empresas já canceladas.")
+
     with col2:
         saldo_total = df_filtrado['saldo_credor_atual'].sum() if 'saldo_credor_atual' in df_filtrado.columns else 0
-        st.metric("Saldo Total", f"R$ {saldo_total/1e6:.1f}M")
-    
+        st.metric("Saldo Total", f"R$ {saldo_total/1e6:.1f}M",
+                  help="Soma dos saldos credores de ICMS das empresas no ranking. Valor potencial em risco.")
+
     with col3:
         score_medio = df_filtrado['score_total'].mean() if 'score_total' in df_filtrado.columns else 0
-        st.metric("Score Médio", f"{score_medio:.1f}")
-    
+        st.metric("Score Médio", f"{score_medio:.1f}",
+                  help="Média do score de risco das empresas filtradas. Score varia de 0 a 100 (quanto maior, maior o risco).")
+
     with col4:
         indicios_total = df_filtrado['qtde_indicios'].sum() if 'qtde_indicios' in df_filtrado.columns else 0
-        st.metric("Total Indícios", f"{int(indicios_total):,}")
+        st.metric("Total Indícios", f"{int(indicios_total):,}",
+                  help="Soma de todos os indícios NEAF das empresas no ranking. Indica volume de irregularidades detectadas.")
     
     st.divider()
     
@@ -2982,15 +3132,18 @@ def pagina_drill_down_empresa(dados, filtros, engine):
             ind_info = df_indicios.iloc[0]
             
             col1, col2, col3 = st.columns(3)
-            
+
             with col1:
-                st.metric("Total de Indícios", int(ind_info.get('qtde_indicios', 0)))
-            
+                st.metric("Total de Indícios", int(ind_info.get('qtde_indicios', 0)),
+                          help="Quantidade total de indícios registrados no NEAF para esta empresa.")
+
             with col2:
-                st.metric("Indícios Graves", int(ind_info.get('qtde_indicios_graves', 0)))
-            
+                st.metric("Indícios Graves", int(ind_info.get('qtde_indicios_graves', 0)),
+                          help="Quantidade de indícios de alta gravidade (fraude, simulação, passivo fictício, etc.).")
+
             with col3:
-                st.metric("Score Indícios", f"{float(ind_info.get('soma_scores_indicios', 0)):.0f}")
+                st.metric("Score Indícios", f"{float(ind_info.get('soma_scores_indicios', 0)):.0f}",
+                          help="Soma ponderada dos scores de todos os indícios. Cada tipo de indício tem um peso específico.")
             
             # Classificação
             classif_ind = ind_info.get('classificacao_risco_indicios', 'N/A')
@@ -3010,18 +3163,21 @@ def pagina_drill_down_empresa(dados, filtros, engine):
             cred_info = df_creditos.iloc[0]
             
             col1, col2, col3 = st.columns(3)
-            
+
             with col1:
                 saldo_atual = float(cred_info.get('saldo_credor_atual', 0))
-                st.metric("Saldo Atual", f"R$ {saldo_atual:,.2f}")
-            
+                st.metric("Saldo Atual", f"R$ {saldo_atual:,.2f}",
+                          help="Saldo credor de ICMS atual da empresa. Valor que pode ser utilizado para compensação.")
+
             with col2:
                 credito_12m = float(cred_info.get('vl_credito_12m', 0))
-                st.metric("Crédito 12m", f"R$ {credito_12m:,.2f}")
-            
+                st.metric("Crédito 12m", f"R$ {credito_12m:,.2f}",
+                          help="Total de créditos de ICMS declarados nos últimos 12 meses.")
+
             with col3:
                 credito_60m = float(cred_info.get('vl_credito_60m', 0))
-                st.metric("Crédito 60m", f"R$ {credito_60m:,.2f}")
+                st.metric("Crédito 60m", f"R$ {credito_60m:,.2f}",
+                          help="Total de créditos de ICMS declarados nos últimos 60 meses (5 anos).")
             
             # Alertas
             if cred_info.get('flag_saldo_alto_cancelada', 0) == 1:
@@ -3062,11 +3218,46 @@ def pagina_machine_learning(dados, filtros, engine):
     
     st.markdown("""
     <div class='info-box'>
-    <b>Objetivo:</b> Treinar modelo de ML usando empresas historicamente canceladas e 
+    <b>Objetivo:</b> Treinar modelo de ML usando empresas historicamente canceladas e
     aplicar em empresas ativas para identificar novas candidatas ao cancelamento.
     </div>
     """, unsafe_allow_html=True)
-    
+
+    # Seção de ajuda para Machine Learning
+    with st.expander("❓ Guia - Como funciona o modelo de Machine Learning", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+            **🤖 Algoritmo Utilizado:**
+            - **Random Forest Classifier**
+            - 100 árvores de decisão
+            - Balanceamento automático de classes
+
+            **📊 Métricas de Avaliação:**
+            - **Acurácia**: % de previsões corretas
+            - **ROC-AUC**: Capacidade de distinguir classes
+              (0.5 = aleatório, 1.0 = perfeito)
+            - **Matriz de Confusão**: Visualização de acertos/erros
+            """)
+
+        with col2:
+            st.markdown("""
+            **🎯 Features mais importantes:**
+            - Score de comportamento
+            - Saldo credor atual
+            - Taxa de permanência
+            - Quantidade de indícios
+            - Score de crédito
+
+            **📈 Classificação por Probabilidade:**
+            - **CRÍTICO**: ≥ 85% de probabilidade
+            - **MUITO ALTO**: 70-85%
+            - **ALTO**: 50-70%
+            - **MÉDIO**: 30-50%
+            - **BAIXO**: < 30%
+            """)
+
     # Tabs
     tab1, tab2, tab3 = st.tabs(["🎯 Treinar Modelo", "🔮 Aplicar Predições", "📊 Análise do Modelo"])
     
@@ -3119,15 +3310,18 @@ def pagina_machine_learning(dados, filtros, engine):
                 
                 # Métricas
                 col1, col2, col3 = st.columns(3)
-                
+
                 with col1:
-                    st.metric("Acurácia", f"{metricas['accuracy']*100:.1f}%")
-                
+                    st.metric("Acurácia", f"{metricas['accuracy']*100:.1f}%",
+                              help="Percentual de previsões corretas do modelo. Quanto maior, melhor a capacidade de classificação.")
+
                 with col2:
-                    st.metric("ROC-AUC", f"{metricas['roc_auc']:.3f}")
-                
+                    st.metric("ROC-AUC", f"{metricas['roc_auc']:.3f}",
+                              help="Área sob a curva ROC. Mede a capacidade do modelo de distinguir entre classes. Varia de 0.5 (aleatório) a 1.0 (perfeito).")
+
                 with col3:
-                    st.metric("Features", len(features))
+                    st.metric("Features", len(features),
+                              help="Quantidade de variáveis utilizadas pelo modelo para fazer as previsões.")
                 
                 # Importância das features
                 st.subheader("📊 Importância das Features")
@@ -3189,22 +3383,26 @@ def pagina_machine_learning(dados, filtros, engine):
             
             # KPIs
             col1, col2, col3, col4 = st.columns(4)
-            
+
             with col1:
                 criticas = len(df_pred[df_pred['classificacao_ml'] == 'CRÍTICO'])
-                st.metric("🔴 CRÍTICO", f"{criticas:,}")
-            
+                st.metric("🔴 CRÍTICO", f"{criticas:,}",
+                          help="Empresas com probabilidade de cancelamento ≥ 85%. Altíssimo risco, candidatas prioritárias.")
+
             with col2:
                 muito_alto = len(df_pred[df_pred['classificacao_ml'] == 'MUITO ALTO'])
-                st.metric("🟠 MUITO ALTO", f"{muito_alto:,}")
-            
+                st.metric("🟠 MUITO ALTO", f"{muito_alto:,}",
+                          help="Empresas com probabilidade entre 70% e 85%. Risco muito elevado de cancelamento.")
+
             with col3:
                 alto = len(df_pred[df_pred['classificacao_ml'] == 'ALTO'])
-                st.metric("🟡 ALTO", f"{alto:,}")
-            
+                st.metric("🟡 ALTO", f"{alto:,}",
+                          help="Empresas com probabilidade entre 50% e 70%. Risco elevado, devem ser monitoradas.")
+
             with col4:
                 prob_media = df_pred['prob_cancelamento'].mean() * 100
-                st.metric("Prob. Média", f"{prob_media:.1f}%")
+                st.metric("Prob. Média", f"{prob_media:.1f}%",
+                          help="Probabilidade média de cancelamento de todas as empresas ativas analisadas pelo modelo.")
             
             st.divider()
             
@@ -3321,6 +3519,40 @@ def pagina_alertas_acoes(dados, filtros):
     </div>
     """, unsafe_allow_html=True)
 
+    # Seção de ajuda para sistema de alertas
+    with st.expander("❓ Guia - Sistema de Alertas e Priorização", expanded=False):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+            **🎯 Como funciona a priorização:**
+            O sistema calcula automaticamente o nível de alerta baseado em:
+            1. **Percentil do Score**: Posição relativa no ranking
+            2. **Indícios Graves**: Quantidade de irregularidades críticas
+            3. **Saldo Credor**: Valor financeiro em risco
+
+            **📊 Cálculo do Percentil:**
+            Empresas são ordenadas por score e divididas em faixas:
+            - Percentil 95+: Top 5% de maior risco
+            - Percentil 90-95: Top 5-10%
+            - E assim por diante...
+            """)
+
+        with col2:
+            st.markdown("""
+            **🚨 Ação recomendada por nível:**
+
+            | Nível | Ação Sugerida |
+            |-------|---------------|
+            | 🔴 AÇÃO IMEDIATA | Iniciar fiscalização em até 7 dias |
+            | 🟠 MUITO URGENTE | Priorizar para próximo mês |
+            | 🟡 URGENTE | Incluir no planejamento trimestral |
+            | ⚪ PRIORIDADE ALTA | Monitorar mensalmente |
+            | 🟢 MONITORAR | Acompanhamento regular |
+
+            **💡 Dica:** Expanda os alertas abaixo para ver detalhes.
+            """)
+
     # Verificar se coluna nivel_alerta existe
     if 'nivel_alerta' not in df_top100.columns:
         st.error("Coluna 'nivel_alerta' não encontrada. Execute o SQL atualizado.")
@@ -3328,26 +3560,31 @@ def pagina_alertas_acoes(dados, filtros):
     
     # KPIs de alertas
     col1, col2, col3, col4, col5 = st.columns(5)
-    
+
     with col1:
         acao_imediata = len(df_top100[df_top100['nivel_alerta'] == 'AÇÃO IMEDIATA'])
-        st.metric("🔴 AÇÃO IMEDIATA", f"{acao_imediata}")
-    
+        st.metric("🔴 AÇÃO IMEDIATA", f"{acao_imediata}",
+                  help="Empresas no percentil 95+ de score com indícios graves. Requerem fiscalização prioritária e imediata.")
+
     with col2:
         muito_urgente = len(df_top100[df_top100['nivel_alerta'] == 'MUITO URGENTE'])
-        st.metric("🟠 MUITO URGENTE", f"{muito_urgente}")
-    
+        st.metric("🟠 MUITO URGENTE", f"{muito_urgente}",
+                  help="Empresas no percentil 90-95 de score. Alto risco, devem ser tratadas em curto prazo.")
+
     with col3:
         urgente = len(df_top100[df_top100['nivel_alerta'] == 'URGENTE'])
-        st.metric("🟡 URGENTE", f"{urgente}")
-    
+        st.metric("🟡 URGENTE", f"{urgente}",
+                  help="Empresas no percentil 75-90 de score. Risco moderado-alto, devem entrar na fila de fiscalização.")
+
     with col4:
         prioridade_alta = len(df_top100[df_top100['nivel_alerta'] == 'PRIORIDADE ALTA'])
-        st.metric("⚪ PRIORIDADE ALTA", f"{prioridade_alta}")
-    
+        st.metric("⚪ PRIORIDADE ALTA", f"{prioridade_alta}",
+                  help="Empresas no percentil 50-75 de score. Devem ser acompanhadas para evolução do risco.")
+
     with col5:
         monitorar = len(df_top100[df_top100['nivel_alerta'] == 'MONITORAR'])
-        st.metric("🟢 MONITORAR", f"{monitorar}")
+        st.metric("🟢 MONITORAR", f"{monitorar}",
+                  help="Empresas abaixo do percentil 50. Risco baixo, mas devem permanecer em monitoramento contínuo.")
     
     st.divider()
     
@@ -3512,22 +3749,26 @@ def pagina_analise_motivos(dados, filtros, engine):
     
     # KPIs
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         total_motivos = df_motivos['cod_motivo'].nunique()
-        st.metric("Motivos Distintos", f"{total_motivos}")
-    
+        st.metric("Motivos Distintos", f"{total_motivos}",
+                  help="Quantidade de códigos de motivo de cancelamento diferentes registrados no sistema.")
+
     with col2:
         total_protocolos = df_motivos['qtde_protocolos'].sum()
-        st.metric("Total Protocolos", f"{int(total_protocolos):,}")
-    
+        st.metric("Total Protocolos", f"{int(total_protocolos):,}",
+                  help="Soma de todos os protocolos de cancelamento processados para todos os motivos.")
+
     with col3:
         motivo_principal = df_motivos.iloc[0]['cod_motivo'] if not df_motivos.empty else 'N/A'
-        st.metric("Motivo Mais Frequente", f"Cód. {motivo_principal}")
-    
+        st.metric("Motivo Mais Frequente", f"Cód. {motivo_principal}",
+                  help="Código do motivo com maior volume de protocolos de cancelamento.")
+
     with col4:
         taxa_media = df_motivos['taxa_permanencia'].mean()
-        st.metric("Taxa Permanência Média", f"{taxa_media:.1f}%")
+        st.metric("Taxa Permanência Média", f"{taxa_media:.1f}%",
+                  help="Percentual médio de cancelamentos que permaneceram efetivos por motivo.")
     
     st.divider()
     
